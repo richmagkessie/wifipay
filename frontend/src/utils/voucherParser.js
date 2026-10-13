@@ -8,17 +8,22 @@ const EXCLUDE = new Set([
   'HOTSPOT','NETWORK','UNLIMITED','SPEED','MBPS','GHS',
 ])
 
+function looksLikeCode(s) {
+  // Must contain at least one digit AND at least one letter — rejects pure words
+  return /[0-9]/.test(s) && /[A-Z]/.test(s) && !EXCLUDE.has(s)
+}
+
 function extractCodes(text) {
   const raw = text.toUpperCase().match(CODE_RE) || []
-  return [...new Set(raw.filter(c => !EXCLUDE.has(c)))]
+  return [...new Set(raw.filter(looksLikeCode))]
 }
 
 // ─── TXT / plain text ─────────────────────────────────────────────────────────
 export function parseTxt(text) {
   // Try line-by-line first (our BELORA format: one code per line)
   const lines = text.trim().split(/\r?\n/).map(l => l.trim().toUpperCase()).filter(Boolean)
-  const cleanLines = lines.filter(l => /^[A-Z0-9]{6,20}$/.test(l))
-  if (cleanLines.length > lines.length * 0.5) return cleanLines   // majority are clean codes
+  const cleanLines = lines.filter(l => /^[A-Z0-9]{6,20}$/.test(l) && looksLikeCode(l))
+  if (cleanLines.length > lines.length * 0.4) return cleanLines   // majority are clean codes
   return extractCodes(text)                                         // fallback: regex scan
 }
 
@@ -35,7 +40,7 @@ export function parseCsv(text) {
   const codes = rows.slice(1).map(row => {
     const cols = row.split(',')
     return (cols[codeIdx] || '').replace(/"/g, '').trim().toUpperCase()
-  }).filter(c => /^[A-Z0-9]{6,20}$/.test(c))
+  }).filter(c => /^[A-Z0-9]{6,20}$/.test(c) && looksLikeCode(c))
 
   return [...new Set(codes)]
 }

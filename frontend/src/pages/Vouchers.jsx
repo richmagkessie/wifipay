@@ -57,7 +57,7 @@ export default function Vouchers() {
   function onPasteChange(e) {
     const text = e.target.value
     setRawText(text)
-    const parsed = text.trim().split(/[\n,\s]+/).map(c => c.trim().toUpperCase()).filter(c => /^[A-Z0-9]{6,20}$/.test(c))
+    const parsed = text.trim().split(/[\n,\s]+/).map(c => c.trim().toUpperCase()).filter(c => /^[A-Z0-9]{6,20}$/.test(c) && /[0-9]/.test(c) && /[A-Z]/.test(c))
     setCodes([...new Set(parsed)])
   }
 
