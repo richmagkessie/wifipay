@@ -9,8 +9,10 @@ const EXCLUDE = new Set([
 ])
 
 function looksLikeCode(s) {
-  // Must contain at least one digit AND at least one letter — rejects pure words
-  return /[0-9]/.test(s) && /[A-Z]/.test(s) && !EXCLUDE.has(s)
+  if (!(/[0-9]/.test(s) && /[A-Z]/.test(s))) return false  // must mix letters + digits
+  if (/^[0-9A-F]+$/.test(s)) return false                   // all-hex = UUID/hash fragment
+  if (EXCLUDE.has(s)) return false
+  return true
 }
 
 function extractCodes(text) {
