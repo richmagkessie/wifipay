@@ -14,6 +14,8 @@ class Payment(models.Model):
     package         = models.ForeignKey('hotspot.Package', on_delete=models.CASCADE)
     voucher         = models.OneToOneField('vouchers.Voucher', on_delete=models.SET_NULL, null=True, blank=True)
     amount_ghs      = models.DecimalField(max_digits=8, decimal_places=2)
+    platform_fee    = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    isp_amount      = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     phone_number    = models.CharField(max_length=20)
     device_mac      = models.CharField(max_length=17, blank=True)
     device_ip       = models.GenericIPAddressField(null=True, blank=True)

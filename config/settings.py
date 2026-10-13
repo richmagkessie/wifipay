@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'hotspot',
     'payments',
     'vouchers',
+    'wallet',
 ]
 
 MIDDLEWARE = [

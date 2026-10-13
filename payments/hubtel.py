@@ -37,3 +37,21 @@ def check_payment_status(client_reference):
     )
     r.raise_for_status()
     return r.json()
+
+
+def disburse_to_momo(phone, amount, reference, description):
+    """Send money from WifiPay merchant account to an ISP's MoMo number."""
+    payload = {
+        'recipientMsisdn':  phone,
+        'amount':           float(amount),
+        'description':      description,
+        'clientReference':  reference,
+    }
+    r = requests.post(
+        f'{settings.HUBTEL_BASE_URL}/v2/disbursements',
+        json=payload,
+        headers=_auth_header(),
+        timeout=30,
+    )
+    r.raise_for_status()
+    return r.json()
