@@ -146,6 +146,31 @@ class PaymentStatusView(APIView):
         return Response(data)
 
 
+class PaymentHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        routers  = Router.objects.filter(isp=request.user)
+        payments = (
+            Payment.objects
+            .filter(router__in=routers)
+            .select_related('router', 'package')
+            .order_by('-created_at')[:200]
+        )
+        data = [{
+            'id':           str(p.id),
+            'phone_number': p.phone_number,
+            'router_name':  p.router.name,
+            'package_name': p.package.name,
+            'amount_ghs':   str(p.amount_ghs),
+            'isp_amount':   str(p.isp_amount),
+            'status':       p.status,
+            'created_at':   p.created_at,
+            'completed_at': p.completed_at,
+        } for p in payments]
+        return Response(data)
+
+
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import InitiatePaymentView, HubtelWebhookView, PaymentStatusView, DashboardStatsView
+from .views import InitiatePaymentView, HubtelWebhookView, PaymentStatusView, DashboardStatsView, PaymentHistoryView
 
 urlpatterns = [
-    path('initiate/',        InitiatePaymentView.as_view()),
-    path('webhook/',         HubtelWebhookView.as_view()),
-    path('<uuid:payment_id>/status/', PaymentStatusView.as_view()),
-    path('dashboard/stats/', DashboardStatsView.as_view()),
+    path('initiate/',                  InitiatePaymentView.as_view()),
+    path('webhook/',                   HubtelWebhookView.as_view()),
+    path('<uuid:payment_id>/status/',  PaymentStatusView.as_view()),
+    path('dashboard/stats/',           DashboardStatsView.as_view()),
+    path('history/',                   PaymentHistoryView.as_view()),
 ]
