@@ -2,10 +2,10 @@ import { useState } from 'react'
 import api from '../api/client'
 
 export default function Login() {
-  const [mode,     setMode]     = useState('login') // login | register
-  const [form,     setForm]     = useState({ email:'', password:'', business_name:'', phone:'' })
-  const [error,    setError]    = useState('')
-  const [loading,  setLoading]  = useState(false)
+  const [mode,    setMode]    = useState('login')
+  const [form,    setForm]    = useState({ email:'', password:'', business_name:'', phone:'' })
+  const [error,   setError]   = useState('')
+  const [loading, setLoading] = useState(false)
 
   function set(k) { return e => setForm(f => ({...f, [k]: e.target.value})) }
 
@@ -20,58 +20,96 @@ export default function Login() {
       localStorage.setItem('refresh', r.data.refresh)
       window.location.href = '/dashboard'
     } catch (err) {
-      setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Something went wrong')
+      const data = err.response?.data
+      setError(data?.detail || data?.non_field_errors?.[0] || JSON.stringify(data) || 'Something went wrong')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.brand}>
-        <div style={styles.brandName}>WifiPay</div>
-        <div style={styles.brandTag}>ISP Management Portal</div>
-      </div>
-
-      <div style={styles.card}>
-        <div style={styles.tabs}>
-          <button style={{...styles.tab, ...(mode==='login'    ? styles.tabActive : {})}} onClick={() => setMode('login')}>Login</button>
-          <button style={{...styles.tab, ...(mode==='register' ? styles.tabActive : {})}} onClick={() => setMode('register')}>Register</button>
+    <div style={s.page}>
+      <div style={s.left}>
+        <div style={s.leftInner}>
+          <div style={s.mark}>W</div>
+          <div style={s.tagline}>WifiPay</div>
+          <p style={s.desc}>The hotspot management platform for growing ISPs across Africa.</p>
+          <div style={s.features}>
+            {['Sell vouchers online', 'Manage multiple routers', 'Instant MoMo payouts', 'Real-time dashboard'].map(f => (
+              <div key={f} style={s.feature}>
+                <span style={s.check}>✓</span> {f}
+              </div>
+            ))}
+          </div>
         </div>
-
-        {error && <div style={styles.error}>{error}</div>}
-
-        <form onSubmit={submit}>
-          {mode === 'register' && (
-            <>
-              <input style={styles.input} placeholder="Business name" value={form.business_name} onChange={set('business_name')} required />
-              <input style={styles.input} placeholder="Phone number" type="tel" value={form.phone} onChange={set('phone')} required />
-            </>
-          )}
-          <input style={styles.input} placeholder="Email address" type="email" value={form.email} onChange={set('email')} required />
-          <input style={styles.input} placeholder="Password" type="password" value={form.password} onChange={set('password')} required />
-          <button style={styles.btn} type="submit" disabled={loading}>
-            {loading ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
-          </button>
-        </form>
       </div>
 
-      <div style={styles.footer}>Powered by WifiPay · RXR PRIME LTD</div>
+      <div style={s.right}>
+        <div style={s.card}>
+          <div style={s.cardTitle}>
+            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          </div>
+          <div style={s.cardSub}>
+            {mode === 'login' ? 'Sign in to your ISP dashboard' : 'Start selling Wi-Fi in minutes'}
+          </div>
+
+          {error && <div style={s.errorBox}>{error}</div>}
+
+          <form onSubmit={submit}>
+            {mode === 'register' && (
+              <>
+                <Field label="Business name" placeholder="e.g. BELORA Connect" value={form.business_name} onChange={set('business_name')} required />
+                <Field label="Phone number" type="tel" placeholder="0244 000 000" value={form.phone} onChange={set('phone')} required />
+              </>
+            )}
+            <Field label="Email address" type="email" placeholder="you@company.com" value={form.email} onChange={set('email')} required />
+            <Field label="Password" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required />
+
+            <button style={{...s.btn, opacity: loading ? .7 : 1}} type="submit" disabled={loading}>
+              {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+            </button>
+          </form>
+
+          <div style={s.toggle}>
+            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+            {' '}
+            <button style={s.toggleBtn} onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}>
+              {mode === 'login' ? 'Register' : 'Sign in'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-const styles = {
-  page:       { minHeight:'100vh', background:'#ECEAE3', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' },
-  brand:      { textAlign:'center', marginBottom:20 },
-  brandName:  { fontSize:24, fontWeight:800, color:'#1C2B45' },
-  brandTag:   { fontSize:10, letterSpacing:2, color:'#8C9BAD', textTransform:'uppercase', marginTop:4 },
-  card:       { width:'100%', maxWidth:360, background:'#fff', borderRadius:10, padding:'24px 20px', boxShadow:'0 2px 16px rgba(28,43,69,.08)' },
-  tabs:       { display:'flex', marginBottom:20, borderBottom:'1px solid #EEF0F4' },
-  tab:        { flex:1, padding:'10px', background:'none', border:'none', fontSize:14, fontWeight:600, color:'#8C9BAD', cursor:'pointer', borderBottom:'2px solid transparent' },
-  tabActive:  { color:'#1C2B45', borderBottomColor:'#BF7E08' },
-  error:      { fontSize:12, color:'#A02828', background:'#FEF2F2', borderLeft:'3px solid #CB3030', padding:'8px 12px', borderRadius:'0 5px 5px 0', marginBottom:14 },
-  input:      { display:'block', width:'100%', padding:'12px 14px', border:'1.5px solid #D8DDEA', borderRadius:7, fontSize:14, color:'#1C2B45', outline:'none', marginBottom:10 },
-  btn:        { display:'block', width:'100%', padding:13, background:'#1C2B45', color:'#fff', fontSize:14, fontWeight:700, border:'none', borderRadius:7, cursor:'pointer' },
-  footer:     { marginTop:20, fontSize:10, color:'#A8B4BE', textAlign:'center' },
+function Field({ label, ...props }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={s.label}>{label}</label>
+      <input style={s.input} {...props} />
+    </div>
+  )
+}
+
+const s = {
+  page:      { display:'flex', minHeight:'100vh', fontFamily:'Inter, sans-serif' },
+  left:      { flex:1, background:'#1C2B45', display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 40px' },
+  leftInner: { maxWidth:380 },
+  mark:      { width:48, height:48, background:'#BF7E08', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, fontWeight:800, color:'#fff', marginBottom:24 },
+  tagline:   { fontSize:32, fontWeight:800, color:'#fff', letterSpacing:'-1px', marginBottom:10 },
+  desc:      { fontSize:15, color:'rgba(255,255,255,.5)', lineHeight:1.6, marginBottom:32 },
+  features:  { display:'flex', flexDirection:'column', gap:12 },
+  feature:   { fontSize:14, color:'rgba(255,255,255,.7)', display:'flex', alignItems:'center', gap:10 },
+  check:     { color:'#BF7E08', fontWeight:700 },
+  right:     { width:460, display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 48px', background:'#F4F3EF' },
+  card:      { width:'100%', maxWidth:380 },
+  cardTitle: { fontSize:24, fontWeight:800, color:'#1C2B45', letterSpacing:'-0.5px', marginBottom:6 },
+  cardSub:   { fontSize:14, color:'#9CA3AF', marginBottom:28 },
+  errorBox:  { background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', padding:'11px 14px', borderRadius:8, fontSize:13, marginBottom:18, lineHeight:1.4 },
+  label:     { display:'block', fontSize:12, fontWeight:600, color:'#6B7280', marginBottom:6, letterSpacing:'.3px' },
+  input:     { display:'block', width:'100%', padding:'11px 14px', border:'1.5px solid #E5E3DC', borderRadius:8, fontSize:14, color:'#1C2B45', background:'#fff', outline:'none', transition:'border-color .15s', boxSizing:'border-box' },
+  btn:       { display:'block', width:'100%', padding:'13px', background:'#1C2B45', color:'#fff', fontSize:14, fontWeight:700, border:'none', borderRadius:8, cursor:'pointer', marginTop:6, letterSpacing:'.2px' },
+  toggle:    { fontSize:13, color:'#9CA3AF', textAlign:'center', marginTop:20 },
+  toggleBtn: { background:'none', border:'none', color:'#BF7E08', fontWeight:700, fontSize:13, cursor:'pointer', padding:0 },
 }

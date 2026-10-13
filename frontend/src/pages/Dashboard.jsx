@@ -1,107 +1,100 @@
 import { useState, useEffect } from 'react'
 import api from '../api/client'
+import Layout from '../components/Layout'
 
 export default function Dashboard() {
-  const [stats,      setStats]      = useState(null)
-  const [wallet,     setWallet]     = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [showModal,  setShowModal]  = useState(false)
+  const [stats,     setStats]     = useState(null)
+  const [wallet,    setWallet]    = useState(null)
+  const [loading,   setLoading]   = useState(true)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     Promise.all([
       api.get('/payments/dashboard/stats/'),
       api.get('/wallet/'),
-    ]).then(([s, w]) => {
-      setStats(s.data)
-      setWallet(w.data)
-    }).finally(() => setLoading(false))
+    ]).then(([s, w]) => { setStats(s.data); setWallet(w.data) })
+      .finally(() => setLoading(false))
   }, [])
 
-  function logout() {
-    localStorage.removeItem('access')
-    localStorage.removeItem('refresh')
-    window.location.href = '/login'
-  }
+  if (loading) return <Layout title="Dashboard"><Skeleton /></Layout>
 
-  if (loading) return <div style={styles.center}>Loading…</div>
+  const balance = Number(wallet?.balance || 0)
 
   return (
-    <div style={styles.page}>
-      <div style={styles.topbar}>
-        <div style={styles.logo}>WifiPay</div>
-        <button style={styles.logoutBtn} onClick={logout}>Logout</button>
+    <Layout title="Dashboard">
+      {/* Wallet hero */}
+      <div style={s.walletHero}>
+        <div>
+          <div style={s.heroLabel}>Available Balance</div>
+          <div style={s.heroAmount}>GHS {balance.toFixed(2)}</div>
+          <div style={s.heroSub}>
+            GHS {Number(wallet?.total_earned || 0).toFixed(2)} earned total &nbsp;·&nbsp;
+            GHS {Number(wallet?.total_withdrawn || 0).toFixed(2)} withdrawn
+          </div>
+        </div>
+        <button style={s.withdrawBtn} onClick={() => setShowModal(true)}>
+          Withdraw funds
+        </button>
       </div>
 
-      <div style={styles.content}>
-        <div style={styles.pageTitle}>Dashboard</div>
+      {/* KPI row */}
+      <div style={s.kpiRow}>
+        <KPI label="Today's Revenue"  value={`GHS ${Number(stats?.today_revenue || 0).toFixed(2)}`} accent />
+        <KPI label="Today's Sales"    value={stats?.today_sales   || 0} />
+        <KPI label="Total Revenue"    value={`GHS ${Number(stats?.total_revenue || 0).toFixed(2)}`} />
+        <KPI label="Total Sales"      value={stats?.total_sales   || 0} />
+        <KPI label="Active Routers"   value={stats?.routers       || 0} />
+      </div>
 
-        {/* Wallet balance — prominent */}
-        <div style={styles.walletCard}>
-          <div style={styles.walletLeft}>
-            <div style={styles.walletLabel}>Your Balance</div>
-            <div style={styles.walletAmount}>GHS {Number(wallet?.balance || 0).toFixed(2)}</div>
-            <div style={styles.walletSub}>
-              Total earned: GHS {Number(wallet?.total_earned || 0).toFixed(2)} &nbsp;·&nbsp;
-              Withdrawn: GHS {Number(wallet?.total_withdrawn || 0).toFixed(2)}
-            </div>
-          </div>
-          <button style={styles.withdrawBtn} onClick={() => setShowModal(true)}>
-            Withdraw
-          </button>
+      {/* Transactions */}
+      <div style={s.section}>
+        <div style={s.sectionHead}>
+          <div style={s.sectionTitle}>Recent transactions</div>
+          <a href="/payments" style={s.seeAll}>See all →</a>
         </div>
-
-        <div style={styles.statsGrid}>
-          <StatCard label="Today's Sales"  value={stats?.today_sales   || 0} />
-          <StatCard label="Today's Revenue" value={`GHS ${Number(stats?.today_revenue || 0).toFixed(2)}`} />
-          <StatCard label="Total Sales"    value={stats?.total_sales   || 0} />
-          <StatCard label="Total Revenue"  value={`GHS ${Number(stats?.total_revenue || 0).toFixed(2)}`} />
-          <StatCard label="Active Routers" value={stats?.routers       || 0} />
-        </div>
-
-        {/* Recent transactions */}
-        {wallet?.transactions?.length > 0 && (
-          <div style={styles.section}>
-            <div style={styles.sectionTitle}>Recent transactions</div>
-            {wallet.transactions.slice(0, 10).map(tx => (
-              <div key={tx.id} style={styles.txRow}>
-                <div>
-                  <div style={styles.txDesc}>{tx.description}</div>
-                  <div style={styles.txDate}>{new Date(tx.created_at).toLocaleString()}</div>
-                </div>
-                <div style={{...styles.txAmount, color: tx.type === 'credit' ? '#2D7A4F' : '#CB3030'}}>
-                  {tx.type === 'credit' ? '+' : '-'}GHS {Number(tx.amount).toFixed(2)}
-                </div>
-              </div>
-            ))}
-          </div>
+        {wallet?.transactions?.length > 0 ? (
+          <table style={s.table}>
+            <thead>
+              <tr>
+                {['Description','Type','Amount','Date'].map(h => (
+                  <th key={h} style={s.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {wallet.transactions.slice(0, 8).map(tx => (
+                <tr key={tx.id} style={s.tr}>
+                  <td style={s.td}>{tx.description}</td>
+                  <td style={s.td}><TxBadge type={tx.type} /></td>
+                  <td style={{...s.td, fontWeight:600, color: tx.type === 'credit' ? '#15803D' : '#B91C1C'}}>
+                    {tx.type === 'credit' ? '+' : '-'}GHS {Number(tx.amount).toFixed(2)}
+                  </td>
+                  <td style={{...s.td, color:'#9CA3AF'}}>{fmt(tx.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState icon="💳" text="No transactions yet. Sales will appear here." />
         )}
-
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>Quick links</div>
-          <div style={styles.links}>
-            <a style={styles.link} href="/routers">Manage Routers</a>
-            <a style={styles.link} href="/vouchers">Voucher Batches</a>
-            <a style={styles.link} href="/payments">Payment History</a>
-          </div>
-        </div>
       </div>
 
       {showModal && (
         <WithdrawModal
-          balance={wallet?.balance || 0}
+          balance={balance}
           onClose={() => setShowModal(false)}
-          onSuccess={(newBalance) => {
-            setWallet(w => ({...w, balance: newBalance}))
+          onSuccess={() => {
+            api.get('/wallet/').then(w => setWallet(w.data))
             setShowModal(false)
           }}
         />
       )}
-    </div>
+    </Layout>
   )
 }
 
 function WithdrawModal({ balance, onClose, onSuccess }) {
-  const [form,    setForm]    = useState({ amount: '', momo_number: '', momo_name: '' })
+  const [form,    setForm]    = useState({ amount:'', momo_number:'', momo_name:'' })
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
@@ -109,88 +102,112 @@ function WithdrawModal({ balance, onClose, onSuccess }) {
 
   async function submit(e) {
     e.preventDefault()
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       await api.post('/wallet/withdraw/', form)
-      const w = await api.get('/wallet/')
-      onSuccess(w.data.balance)
+      onSuccess()
     } catch (err) {
       setError(err.response?.data?.error || 'Withdrawal failed')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
-        <div style={styles.modalTitle}>Withdraw to MoMo</div>
-        <div style={styles.modalSub}>Available: GHS {Number(balance).toFixed(2)}</div>
-        {error && <div style={styles.error}>{error}</div>}
+    <div style={m.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={m.box}>
+        <div style={m.head}>
+          <div>
+            <div style={m.title}>Withdraw to MoMo</div>
+            <div style={m.sub}>Available: GHS {balance.toFixed(2)}</div>
+          </div>
+          <button style={m.close} onClick={onClose}>✕</button>
+        </div>
+        {error && <div style={m.err}>{error}</div>}
         <form onSubmit={submit}>
-          <input style={styles.input} placeholder="Amount (GHS)" type="number" step="0.01" min="5"
-            value={form.amount} onChange={set('amount')} required />
-          <input style={styles.input} placeholder="MoMo number (e.g. 0244...)" type="tel"
-            value={form.momo_number} onChange={set('momo_number')} required />
-          <input style={styles.input} placeholder="Account name"
-            value={form.momo_name} onChange={set('momo_name')} required />
-          <button style={styles.btn} type="submit" disabled={loading}>
-            {loading ? 'Processing…' : 'Withdraw'}
-          </button>
-          <button style={styles.btnBack} type="button" onClick={onClose}>Cancel</button>
+          <MField label="Amount (GHS)" type="number" step="0.01" min="5" placeholder="0.00" value={form.amount} onChange={set('amount')} required />
+          <MField label="MoMo number" type="tel" placeholder="0244 000 000" value={form.momo_number} onChange={set('momo_number')} required />
+          <MField label="Account name" placeholder="Full name on the account" value={form.momo_name} onChange={set('momo_name')} required />
+          <button style={m.btn} disabled={loading}>{loading ? 'Processing…' : 'Withdraw'}</button>
         </form>
       </div>
     </div>
   )
 }
 
-function StatCard({ label, value }) {
+function MField({ label, ...props }) {
   return (
-    <div style={styles.card}>
-      <div style={styles.cardValue}>{value}</div>
-      <div style={styles.cardLabel}>{label}</div>
+    <div style={{ marginBottom:14 }}>
+      <label style={m.label}>{label}</label>
+      <input style={m.input} {...props} />
     </div>
   )
 }
 
-const styles = {
-  page:         { minHeight:'100vh', background:'#F5F4F0', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' },
-  center:       { display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#8C9BAD' },
-  topbar:       { background:'#1C2B45', padding:'14px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' },
-  logo:         { color:'#fff', fontSize:18, fontWeight:800 },
-  logoutBtn:    { background:'transparent', border:'1px solid rgba(255,255,255,.3)', color:'#fff', padding:'6px 14px', borderRadius:6, cursor:'pointer', fontSize:12 },
-  content:      { maxWidth:900, margin:'0 auto', padding:'24px 16px' },
-  pageTitle:    { fontSize:20, fontWeight:700, color:'#1C2B45', marginBottom:16 },
+function KPI({ label, value, accent }) {
+  return (
+    <div style={{...s.kpi, ...(accent ? s.kpiAccent : {})}}>
+      <div style={{...s.kpiVal, ...(accent ? s.kpiValAccent : {})}}>{value}</div>
+      <div style={{...s.kpiLabel, ...(accent ? {color:'rgba(255,255,255,.55)'} : {})}}>{label}</div>
+    </div>
+  )
+}
 
-  walletCard:   { background:'#1C2B45', borderRadius:10, padding:'20px 22px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 },
-  walletLeft:   { flex:1 },
-  walletLabel:  { fontSize:11, color:'rgba(255,255,255,.5)', textTransform:'uppercase', letterSpacing:1, marginBottom:4 },
-  walletAmount: { fontSize:30, fontWeight:800, color:'#BF7E08', marginBottom:4 },
-  walletSub:    { fontSize:11, color:'rgba(255,255,255,.45)' },
-  withdrawBtn:  { background:'#BF7E08', color:'#fff', border:'none', padding:'11px 22px', borderRadius:7, fontWeight:700, fontSize:13, cursor:'pointer', whiteSpace:'nowrap' },
+function TxBadge({ type }) {
+  const style = type === 'credit'
+    ? { background:'#DCFCE7', color:'#15803D' }
+    : { background:'#FEE2E2', color:'#B91C1C' }
+  return <span style={{...badge, ...style}}>{type}</span>
+}
 
-  statsGrid:    { display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:10, marginBottom:20 },
-  card:         { background:'#fff', borderRadius:8, padding:'14px 16px', boxShadow:'0 1px 4px rgba(28,43,69,.06)' },
-  cardValue:    { fontSize:20, fontWeight:800, color:'#1C2B45', marginBottom:3 },
-  cardLabel:    { fontSize:11, color:'#8C9BAD', textTransform:'uppercase', letterSpacing:.8 },
+function EmptyState({ icon, text }) {
+  return (
+    <div style={{ textAlign:'center', padding:'40px 0', color:'#9CA3AF' }}>
+      <div style={{ fontSize:28, marginBottom:8 }}>{icon}</div>
+      <div style={{ fontSize:13 }}>{text}</div>
+    </div>
+  )
+}
 
-  section:      { background:'#fff', borderRadius:8, padding:'18px 20px', boxShadow:'0 1px 4px rgba(28,43,69,.06)', marginBottom:16 },
-  sectionTitle: { fontSize:13, fontWeight:700, color:'#1C2B45', marginBottom:12 },
-  txRow:        { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #F5F4F0' },
-  txDesc:       { fontSize:13, color:'#1C2B45', marginBottom:2 },
-  txDate:       { fontSize:11, color:'#A8B4BE' },
-  txAmount:     { fontSize:14, fontWeight:700 },
+function Skeleton() {
+  return <div style={{ color:'#9CA3AF', padding:'40px 0', textAlign:'center' }}>Loading…</div>
+}
 
-  links:        { display:'flex', gap:10, flexWrap:'wrap' },
-  link:         { padding:'8px 16px', background:'#F0EFE9', borderRadius:6, fontSize:13, color:'#1C2B45', textDecoration:'none', fontWeight:600 },
+function fmt(d) {
+  return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+}
 
-  overlay:      { position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, zIndex:100 },
-  modal:        { background:'#fff', borderRadius:10, padding:'24px 20px', width:'100%', maxWidth:360 },
-  modalTitle:   { fontSize:16, fontWeight:700, color:'#1C2B45', marginBottom:4 },
-  modalSub:     { fontSize:12, color:'#8C9BAD', marginBottom:16 },
-  error:        { fontSize:12, color:'#A02828', background:'#FEF2F2', borderLeft:'3px solid #CB3030', padding:'8px 12px', borderRadius:'0 5px 5px 0', marginBottom:14 },
-  input:        { display:'block', width:'100%', padding:'12px 14px', border:'1.5px solid #D8DDEA', borderRadius:7, fontSize:14, color:'#1C2B45', outline:'none', marginBottom:10, boxSizing:'border-box' },
-  btn:          { display:'block', width:'100%', padding:13, background:'#1C2B45', color:'#fff', fontSize:14, fontWeight:700, border:'none', borderRadius:7, cursor:'pointer', marginBottom:8 },
-  btnBack:      { display:'block', width:'100%', padding:11, background:'transparent', border:'1.5px solid #D8DDEA', borderRadius:7, color:'#8C9BAD', fontSize:13, fontWeight:600, cursor:'pointer' },
+const badge = { display:'inline-block', fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, textTransform:'capitalize' }
+
+const s = {
+  walletHero:   { background:'#1C2B45', borderRadius:12, padding:'24px 28px', marginBottom:20, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16 },
+  heroLabel:    { fontSize:11, fontWeight:600, color:'rgba(255,255,255,.45)', textTransform:'uppercase', letterSpacing:1, marginBottom:6 },
+  heroAmount:   { fontSize:36, fontWeight:800, color:'#BF7E08', letterSpacing:'-1px', marginBottom:4 },
+  heroSub:      { fontSize:12, color:'rgba(255,255,255,.35)' },
+  withdrawBtn:  { background:'#BF7E08', color:'#fff', border:'none', padding:'11px 24px', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', whiteSpace:'nowrap', letterSpacing:'.2px' },
+  kpiRow:       { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px,1fr))', gap:10, marginBottom:20 },
+  kpi:          { background:'#fff', borderRadius:10, padding:'16px 20px', border:'1px solid #E8E5DE' },
+  kpiAccent:    { background:'#1C2B45', border:'none' },
+  kpiVal:       { fontSize:24, fontWeight:800, color:'#1C2B45', letterSpacing:'-0.5px', marginBottom:4 },
+  kpiValAccent: { color:'#BF7E08' },
+  kpiLabel:     { fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:.8 },
+  section:      { background:'#fff', borderRadius:10, border:'1px solid #E8E5DE' },
+  sectionHead:  { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'16px 20px', borderBottom:'1px solid #F0EEE8' },
+  sectionTitle: { fontSize:14, fontWeight:700, color:'#1C2B45' },
+  seeAll:       { fontSize:12, fontWeight:600, color:'#BF7E08' },
+  table:        { width:'100%', borderCollapse:'collapse' },
+  th:           { padding:'10px 20px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:.8, background:'#FAFAF8' },
+  tr:           { borderTop:'1px solid #F0EEE8' },
+  td:           { padding:'13px 20px', fontSize:13, color:'#1C2B45' },
+}
+
+const m = {
+  overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,.4)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:200 },
+  box:     { background:'#fff', borderRadius:12, padding:'24px', width:'100%', maxWidth:400, boxShadow:'0 20px 60px rgba(0,0,0,.15)' },
+  head:    { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 },
+  title:   { fontSize:17, fontWeight:700, color:'#1C2B45', marginBottom:3 },
+  sub:     { fontSize:13, color:'#9CA3AF' },
+  close:   { background:'none', border:'none', fontSize:16, color:'#9CA3AF', cursor:'pointer', padding:'2px 6px', lineHeight:1 },
+  err:     { background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', padding:'10px 14px', borderRadius:8, fontSize:13, marginBottom:16 },
+  label:   { display:'block', fontSize:12, fontWeight:600, color:'#6B7280', marginBottom:6 },
+  input:   { display:'block', width:'100%', padding:'11px 14px', border:'1.5px solid #E5E3DC', borderRadius:8, fontSize:14, color:'#1C2B45', outline:'none', boxSizing:'border-box', background:'#fff' },
+  btn:     { display:'block', width:'100%', marginTop:4, padding:'13px', background:'#1C2B45', color:'#fff', fontSize:14, fontWeight:700, border:'none', borderRadius:8, cursor:'pointer' },
 }

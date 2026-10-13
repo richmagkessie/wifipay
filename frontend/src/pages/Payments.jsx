@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import api from '../api/client'
 import Layout from '../components/Layout'
 
-const STATUS_COLOR = {
-  success:   { bg:'#E8F5EE', color:'#2D7A4F' },
-  pending:   { bg:'#FFF8E6', color:'#BF7E08' },
-  failed:    { bg:'#FEF2F2', color:'#CB3030' },
-  cancelled: { bg:'#F0EFE9', color:'#8C9BAD' },
+const FILTERS = ['all','success','pending','failed']
+
+const STATUS = {
+  success:   { bg:'#DCFCE7', color:'#15803D' },
+  pending:   { bg:'#FEF3C7', color:'#92400E' },
+  failed:    { bg:'#FEE2E2', color:'#B91C1C' },
+  cancelled: { bg:'#F3F4F6', color:'#6B7280' },
 }
 
 export default function Payments() {
@@ -21,14 +23,29 @@ export default function Payments() {
   }, [])
 
   const shown = filter === 'all' ? payments : payments.filter(p => p.status === filter)
+  const total = shown.reduce((sum, p) => sum + Number(p.isp_amount || 0), 0)
 
   return (
     <Layout title="Payment History">
-      <div style={styles.filters}>
-        {['all','success','pending','failed'].map(f => (
+      {/* Summary strip */}
+      <div style={s.strip}>
+        <div style={s.stripItem}>
+          <div style={s.stripVal}>{shown.length}</div>
+          <div style={s.stripLabel}>Transactions</div>
+        </div>
+        <div style={s.stripDivider} />
+        <div style={s.stripItem}>
+          <div style={s.stripVal}>GHS {total.toFixed(2)}</div>
+          <div style={s.stripLabel}>Your earnings</div>
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={s.tabs}>
+        {FILTERS.map(f => (
           <button
             key={f}
-            style={{...styles.filterBtn, ...(filter===f ? styles.filterActive : {})}}
+            style={{...s.tab, ...(filter === f ? s.tabActive : {})}}
             onClick={() => setFilter(f)}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -36,45 +53,65 @@ export default function Payments() {
         ))}
       </div>
 
-      {loading && <div style={styles.hint}>Loading…</div>}
-      {!loading && shown.length === 0 && <div style={styles.empty}>No payments found.</div>}
-
-      <div style={styles.list}>
-        {shown.map(p => (
-          <div key={p.id} style={styles.row}>
-            <div style={styles.rowLeft}>
-              <div style={styles.phone}>{p.phone_number}</div>
-              <div style={styles.meta}>{p.package_name} · {p.router_name}</div>
-              <div style={styles.date}>{new Date(p.created_at).toLocaleString()}</div>
-            </div>
-            <div style={styles.rowRight}>
-              <div style={styles.amount}>GHS {Number(p.amount_ghs).toFixed(2)}</div>
-              <div style={styles.isp}>You get: GHS {Number(p.isp_amount).toFixed(2)}</div>
-              <span style={{...styles.badge, ...STATUS_COLOR[p.status]}}>
-                {p.status}
-              </span>
-            </div>
-          </div>
-        ))}
+      <div style={s.card}>
+        {loading ? (
+          <div style={s.empty}>Loading…</div>
+        ) : shown.length === 0 ? (
+          <div style={s.empty}>No payments found.</div>
+        ) : (
+          <table style={s.table}>
+            <thead>
+              <tr>
+                {['Customer','Package','Router','Gross','Your Cut','Status','Date'].map(h => (
+                  <th key={h} style={s.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map(p => (
+                <tr key={p.id} style={s.tr}>
+                  <td style={s.td}>
+                    <div style={s.phone}>{p.phone_number}</div>
+                  </td>
+                  <td style={s.td}>{p.package_name}</td>
+                  <td style={s.td}>{p.router_name}</td>
+                  <td style={s.td}>GHS {Number(p.amount_ghs).toFixed(2)}</td>
+                  <td style={{...s.td, fontWeight:700, color:'#15803D'}}>
+                    GHS {Number(p.isp_amount).toFixed(2)}
+                  </td>
+                  <td style={s.td}>
+                    <span style={{...s.badge, ...STATUS[p.status]}}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td style={{...s.td, color:'#9CA3AF'}}>
+                    {new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </Layout>
   )
 }
 
-const styles = {
-  filters:      { display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' },
-  filterBtn:    { padding:'7px 16px', background:'#fff', border:'1.5px solid #D8DDEA', borderRadius:20, fontSize:12, fontWeight:600, color:'#8C9BAD', cursor:'pointer' },
-  filterActive: { background:'#1C2B45', borderColor:'#1C2B45', color:'#fff' },
-  hint:         { fontSize:13, color:'#8C9BAD' },
-  empty:        { textAlign:'center', color:'#8C9BAD', fontSize:14, padding:'40px 0' },
-  list:         { display:'flex', flexDirection:'column', gap:8 },
-  row:          { background:'#fff', borderRadius:8, padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, boxShadow:'0 1px 4px rgba(28,43,69,.07)' },
-  rowLeft:      { flex:1 },
-  phone:        { fontSize:14, fontWeight:700, color:'#1C2B45', marginBottom:2 },
-  meta:         { fontSize:12, color:'#8C9BAD', marginBottom:2 },
-  date:         { fontSize:11, color:'#A8B4BE' },
-  rowRight:     { textAlign:'right', flexShrink:0 },
-  amount:       { fontSize:15, fontWeight:800, color:'#1C2B45', marginBottom:2 },
-  isp:          { fontSize:11, color:'#2D7A4F', marginBottom:6 },
-  badge:        { display:'inline-block', fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:20, letterSpacing:.5 },
+const s = {
+  strip:       { display:'flex', alignItems:'center', background:'#fff', borderRadius:10, border:'1px solid #E8E5DE', padding:'16px 24px', marginBottom:16, gap:24 },
+  stripItem:   {},
+  stripVal:    { fontSize:22, fontWeight:800, color:'#1C2B45', letterSpacing:'-0.5px' },
+  stripLabel:  { fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:.8, marginTop:2 },
+  stripDivider:{ width:1, height:36, background:'#E8E5DE' },
+  tabs:        { display:'flex', gap:4, marginBottom:12 },
+  tab:         { padding:'7px 16px', background:'#fff', border:'1px solid #E5E3DC', borderRadius:20, fontSize:12, fontWeight:600, color:'#9CA3AF', cursor:'pointer' },
+  tabActive:   { background:'#1C2B45', borderColor:'#1C2B45', color:'#fff' },
+  card:        { background:'#fff', borderRadius:10, border:'1px solid #E8E5DE', overflow:'hidden' },
+  empty:       { padding:'48px', textAlign:'center', color:'#9CA3AF', fontSize:13 },
+  table:       { width:'100%', borderCollapse:'collapse' },
+  th:          { padding:'11px 20px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:.8, background:'#FAFAF8', borderBottom:'1px solid #F0EEE8', whiteSpace:'nowrap' },
+  tr:          { borderTop:'1px solid #F0EEE8', transition:'background .1s' },
+  td:          { padding:'14px 20px', fontSize:13, color:'#1C2B45' },
+  phone:       { fontWeight:600 },
+  badge:       { display:'inline-block', fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, textTransform:'capitalize' },
 }
